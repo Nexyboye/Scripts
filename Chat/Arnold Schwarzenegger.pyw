@@ -5,30 +5,22 @@ from PIL import Image, ImageTk
 import tempfile
 import base64, zlib
 import time
-
 client = OpenAI()
-system_msg = "short answers, act arrogant, curse words."
+
+
 bg = "black"    #   color of background
 fg = "red"      #   color of text
 ibg = "white"   #   color of text cursor
 ng = "yellow"   #   color of names
 afg = fg        #   color of fg on hover
 abg = bg        #   color of bg on hover
+window_w = 600
+window_h = 900
 
-messages=[
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": system_msg
-                }
-              ]
-            }
-         ]
 
-def send_msg(chat_display, text_input, messages):
-    
+
+def send_msg(chat_display, text_input):
+    global messages
     message = text_input.get("1.0", tk.END)
     text_input.delete("1.0", "end")
     
@@ -69,9 +61,15 @@ def send_msg(chat_display, text_input, messages):
     
     return 'break'
     
-def reset(chat_display, text_input):
+def reset(chat_display, text_input, persona):
     global messages
-    messages=[
+    p = persona.get()
+    if p == "rude":
+        system_msg = "short answers, act arrogant, curse words."
+    elif p == "code":
+        system_msg = "short answers, code only." 
+    
+    messages = [
             {
               "role": "user",
               "content": [
@@ -92,30 +90,51 @@ def log_chat(chat_display):
         file.write(chat_display.get("1.0", tk.END))
 
 
-
+#---------------------------------------------------------------------------------------------------------------- shitty frontend
 
 root = tk.Tk()
 root.title("Chat Window")
 root.configure(background="black")
+root.geometry(f"{window_w}x{window_h}")
 ICON = zlib.decompress(base64.b64decode('eJxjYGAEQgEBBiDJwZDBy'
     'sAgxsDAoAHEQCEGBQaIOAg4sDIgACMUj4JRMApGwQgF/ykEAFXxQRc='))
 _, ICON_PATH = tempfile.mkstemp()
 with open(ICON_PATH, 'wb') as icon_file:
     icon_file.write(ICON)
 root.iconbitmap(default=ICON_PATH)
+#root.bind("<Configure>", on_resize) ############################# IMPLEMENT THE FUNCTION
+
+
+top_frame = tk.Frame(root)
+top_frame.pack()
+
+
 
 model = tk.StringVar(root)
-options = ['o1-preview', 'o1-mini', 'gpt-4-0314']
-model.set(options[0])
-dropbox = tk.OptionMenu(root, model, *options)
-dropbox.config(
+model_options = ['o1-preview', 'o1-mini', 'gpt-4-0314']
+model.set(model_options[0])
+model_dropbox = tk.OptionMenu(top_frame, model, *model_options)
+model_dropbox.config(
     bg=bg, 
     fg=fg, 
     bd=0, 
     highlightthickness=0, 
     activebackground=abg, 
     activeforeground=afg)
-dropbox.pack()
+model_dropbox.pack(side='left')
+
+persona = tk.StringVar(root)
+persona_options = ['rude', 'code']
+persona.set(persona_options[0])
+persona_dropbox = tk.OptionMenu(top_frame, persona, *persona_options)
+persona_dropbox.config(
+    bg=bg, 
+    fg=fg, 
+    bd=0, 
+    highlightthickness=0, 
+    activebackground=abg, 
+    activeforeground=afg)
+persona_dropbox.pack(side='left')
 
 # Chat display area
 chat_display = scrolledtext.ScrolledText(
@@ -137,36 +156,48 @@ text_input = tk.Text(
     bg=bg, 
     fg=fg, 
     insertbackground=ibg)
-text_input.bind('<Control-Return>', lambda event: send_msg(chat_display, text_input, messages))
+text_input.bind('<Control-Return>', lambda event: send_msg(chat_display, text_input))
 text_input.pack()
+text_input.focus_set()
+
+
+bot_frame = tk.Frame(root)
+bot_frame.pack()
 
 # Send button
 send_button = tk.Button(
-    root, 
+    bot_frame, 
     text="Send", 
-    command=lambda:send_msg(chat_display, text_input, messages), 
-    width=100, 
+    command=lambda:send_msg(chat_display, text_input), 
+    width=30, 
     bg=bg, 
     fg=fg)
-send_button.pack()
+send_button.pack(side='left')
 
 reset_button = tk.Button(
-    root, 
+    bot_frame, 
     text="Reset", 
-    command=lambda:reset(chat_display, text_input), 
-    width=100, 
+    command=lambda:reset(chat_display=chat_display, text_input=text_input, persona=persona), 
+    width=30, 
     bg=bg, 
     fg=fg)
-reset_button.pack()
+reset_button.pack(side='left')
 
 log_button = tk.Button(
-    root, 
+    bot_frame, 
     text="Log", 
     command=lambda:log_chat(chat_display), 
-    width=100, 
+    width=30, 
     bg=bg, 
     fg=fg)
-log_button.pack()
+log_button.pack(side='left')
+
+#----------------------------------------------------------------------------------------------------------------
+
+messages = None
+reset(chat_display, text_input, persona)
+
+
 
 root.mainloop()
 
@@ -181,5 +212,8 @@ image = image.resize((100, 100))
 photo = ImageTk.PhotoImage(image)
 chat_display.image_create(tk.END, image=photo)
 chat_display.insert(tk.END, "\n\n")
+
+
+
 
 '''
